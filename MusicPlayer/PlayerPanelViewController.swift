@@ -23,10 +23,8 @@ class PlayerPanelViewController: UICollectionViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // Uncomment the following line to preserve selection between presentations
-        // self.clearsSelectionOnViewWillAppear = false
-
         // Do any additional setup after loading the view.
+        
         // load local songs
         syncApi.sync() { results, error in
             if let error = error {
@@ -45,11 +43,21 @@ class PlayerPanelViewController: UICollectionViewController {
                 self.collectionView?.reloadData()
             }
         }
+        
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(self.stopPlayer),
+            name: .UIApplicationDidEnterBackground,
+            object: nil)
     }
 
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
+        if player?.isPlaying == true {
+            player?.stop()
+        }
+        player = nil
     }
 
     @IBAction func syncFromServer(_ sender: UIBarButtonItem) {
@@ -90,7 +98,6 @@ extension PlayerPanelViewController {
         return 1
     }
 
-
     override func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return songs.count
     }
@@ -107,25 +114,34 @@ extension PlayerPanelViewController {
 
 // MARK: UICollectionViewDelegate
 extension PlayerPanelViewController {
-    
     override func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-//        guard let url = Bundle.main.url(forResource: "headshoulderskneestoes", withExtension: "mp3", subdirectory: "res") else { return }
-
         guard let url = URL(string: songs[(indexPath as IndexPath).row].song_uri) else { return }
         
-        do {
-            try AVAudioSession.sharedInstance().setCategory(AVAudioSessionCategoryPlayback)
-            try AVAudioSession.sharedInstance().setActive(true)
-            
-            
-            player = try AVAudioPlayer(contentsOf: url)
-            guard let player = player else { return }
-            
-            player.play()
-            
-        } catch let error {
-            print(error.localizedDescription)
-        }    }
+        var needToPlay = true
+        
+        if player?.isPlaying == true {
+            if player?.url == url {
+                needToPlay = false
+            }
+            self.stopPlayer()
+        }
+        
+        if needToPlay {
+            do {
+                player = try AVAudioPlayer(contentsOf: url)
+            } catch let error {
+                print(error.localizedDescription)
+            }
+            player?.play()
+        }
+    }
+    
+    @objc public func stopPlayer() {
+        if player?.isPlaying == true {
+            player?.stop()
+        }
+        player = nil
+    }
 }
 
     /*
