@@ -16,6 +16,7 @@ class PlayerPanelViewController: UICollectionViewController {
     fileprivate let sectionInsets = UIEdgeInsets(top: 50.0, left: 20.0, bottom: 50.0, right: 20.0)
     fileprivate let syncApi: SyncApiProtocol = LocalSyncApi()
     fileprivate var songs: [Song] = []
+    fileprivate var currentSongIndex: Int = 0
     
     var player: AVAudioPlayer?
     
@@ -127,12 +128,18 @@ extension PlayerPanelViewController {
         }
         
         if needToPlay {
-            do {
-                player = try AVAudioPlayer(contentsOf: url)
-            } catch let error {
-                print(error.localizedDescription)
-            }
+            playTrack(url)
+            currentSongIndex = (indexPath as IndexPath).row
+        }
+    }
+    
+    func playTrack(_ url: URL) {
+        do {
+            player = try AVAudioPlayer(contentsOf: url)
             player?.play()
+            player?.delegate = self
+        } catch let error {
+            print(error.localizedDescription)
         }
     }
     
@@ -203,5 +210,22 @@ extension PlayerPanelViewController : UICollectionViewDelegateFlowLayout {
                         layout collectionViewLayout: UICollectionViewLayout,
                         minimumLineSpacingForSectionAt section: Int) -> CGFloat {
         return sectionInsets.left
+    }
+}
+
+extension PlayerPanelViewController : AVAudioPlayerDelegate {
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        if let url = nextTrack() {
+            self.playTrack(url)
+        }
+    }
+    
+    func nextTrack() -> URL? {
+        if (currentSongIndex < songs.count - 1) {
+            currentSongIndex += 1
+            return URL(string: songs[currentSongIndex].song_uri)
+        }
+        
+        return nil
     }
 }
